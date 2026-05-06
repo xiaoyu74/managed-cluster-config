@@ -29539,11 +29539,6 @@ objects:
     clusterDeploymentSelector:
       matchLabels:
         api.openshift.com/managed: 'true'
-      matchExpressions:
-      - key: api.openshift.com/fedramp
-        operator: NotIn
-        values:
-        - 'true'
     resourceApplyMode: Sync
     resources:
     - apiVersion: machineconfiguration.openshift.io/v1
@@ -29572,10 +29567,6 @@ objects:
         operator: In
         values:
         - integration
-      - key: api.openshift.com/fedramp
-        operator: NotIn
-        values:
-        - 'true'
       - key: ext-hypershift.openshift.io/cluster-type
         operator: In
         values:
@@ -29609,10 +29600,6 @@ objects:
         operator: In
         values:
         - production
-      - key: api.openshift.com/fedramp
-        operator: NotIn
-        values:
-        - 'true'
       - key: ext-hypershift.openshift.io/cluster-type
         operator: In
         values:
@@ -29646,10 +29633,6 @@ objects:
         operator: In
         values:
         - staging
-      - key: api.openshift.com/fedramp
-        operator: NotIn
-        values:
-        - 'true'
       - key: ext-hypershift.openshift.io/cluster-type
         operator: In
         values:
