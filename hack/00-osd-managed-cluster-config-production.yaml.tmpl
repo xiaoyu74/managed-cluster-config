@@ -45711,67 +45711,6 @@ objects:
       managed.openshift.io/gitHash: ${IMAGE_TAG}
       managed.openshift.io/gitRepoName: ${REPO_NAME}
       managed.openshift.io/osd: 'true'
-    name: sdn-ovn-migration
-  spec:
-    clusterDeploymentSelector:
-      matchLabels:
-        api.openshift.com/managed: 'true'
-      matchExpressions:
-      - key: hive.openshift.io/version-major-minor
-        operator: In
-        values:
-        - '4.16'
-    resourceApplyMode: Sync
-    resources:
-    - apiVersion: monitoring.coreos.com/v1
-      kind: PrometheusRule
-      metadata:
-        labels:
-          prometheus: sre-network-live-migration
-          role: alert-rules
-        name: sre-network-live-migration
-        namespace: openshift-monitoring
-      spec:
-        groups:
-        - name: sre-network-live-migration
-          rules:
-          - expr: ( max( max_over_time( timestamp( openshift_network_operator_live_migration_condition{type="NetworkTypeMigrationInProgress"}
-              == 1 )[5d:] ) ) - min( min_over_time( timestamp( openshift_network_operator_live_migration_condition{type="NetworkTypeMigrationInProgress"}
-              == 1 )[5d:] ) ) ) and on() openshift_network_operator_live_migration_condition{type="NetworkTypeMigrationInProgress"}
-              == 1
-            record: cluster:usage:network_live_migration_duration
-          - expr: openshift_network_operator_live_migration_blocked
-            record: cluster:usage:network_live_migration_blocked
-          - expr: openshift_network_operator_live_migration_condition
-            record: cluster:usage:network_live_migration_condition
-        - name: sre-network-live-migration-alerts
-          rules:
-          - alert: NetworkMigrationDelayedSRE
-            expr: (sum(cluster:usage:network_live_migration_duration) > (sum(cluster:nodes_roles)
-              * 1800))
-            for: 1m
-            labels:
-              severity: critical
-              namespace: openshift-network-operator
-            annotations:
-              message: Live migration from SDN to OVN is taking much longer than expected
-                to complete.
-          - alert: NetworkMigrationBlocked
-            expr: cluster:usage:network_live_migration_blocked == 1
-            for: 5m
-            labels:
-              severity: warning
-              namespace: openshift-network-operator
-            annotations:
-              message: Network operator cannot start the requested migration from
-                SDN to OVN due to {{ $labels.reason }}.
-- apiVersion: hive.openshift.io/v1
-  kind: SelectorSyncSet
-  metadata:
-    labels:
-      managed.openshift.io/gitHash: ${IMAGE_TAG}
-      managed.openshift.io/gitRepoName: ${REPO_NAME}
-      managed.openshift.io/osd: 'true'
     name: sre-prometheus
   spec:
     clusterDeploymentSelector:
@@ -46133,6 +46072,7 @@ objects:
               maturity: immature
               source: https://issues.redhat.com/browse/OSD-13647
               link: https://github.com/openshift/ops-sop/blob/master/v4/alerts/StaticPodMissing.md
+              namespace: openshift-kube-apiserver
             annotations:
               message: Static pod kube-apiserver is not running on node {{ $labels.node
                 }} for 60 minutes.
@@ -46158,6 +46098,7 @@ objects:
               severity: critical
               source: https://issues.redhat.com/browse/OSD-13647
               link: https://github.com/openshift/ops-sop/blob/master/v4/alerts/StaticPodMissing.md
+              namespace: openshift-kube-controller-manager
             annotations:
               message: Static pod kube-controller-manager is not running on node {{
                 $labels.node }} for 60 minutes.
@@ -46185,6 +46126,7 @@ objects:
               maturity: immature
               source: https://issues.redhat.com/browse/OSD-13647
               link: https://github.com/openshift/ops-sop/blob/master/v4/alerts/StaticPodMissing.md
+              namespace: openshift-kube-scheduler
             annotations:
               message: Static pod kube-scheduler is not running on node {{ $labels.node
                 }} for 60 minutes.
@@ -49632,6 +49574,67 @@ objects:
               message: 'CSV {{ $labels.name }} version {{ $labels.version }} is in
                 an abnormal state. Reason: {{ $labels.reason }}'
               link: https://github.com/openshift/ops-sop/blob/master/v4/alerts/CsvAbnormalSRE.md
+- apiVersion: hive.openshift.io/v1
+  kind: SelectorSyncSet
+  metadata:
+    labels:
+      managed.openshift.io/gitHash: ${IMAGE_TAG}
+      managed.openshift.io/gitRepoName: ${REPO_NAME}
+      managed.openshift.io/osd: 'true'
+    name: sre-prometheus-sdn-ovn-migration
+  spec:
+    clusterDeploymentSelector:
+      matchLabels:
+        api.openshift.com/managed: 'true'
+      matchExpressions:
+      - key: hive.openshift.io/version-major-minor
+        operator: In
+        values:
+        - '4.16'
+    resourceApplyMode: Sync
+    resources:
+    - apiVersion: monitoring.coreos.com/v1
+      kind: PrometheusRule
+      metadata:
+        labels:
+          prometheus: sre-network-live-migration
+          role: alert-rules
+        name: sre-network-live-migration
+        namespace: openshift-monitoring
+      spec:
+        groups:
+        - name: sre-network-live-migration
+          rules:
+          - expr: ( max( max_over_time( timestamp( openshift_network_operator_live_migration_condition{type="NetworkTypeMigrationInProgress"}
+              == 1 )[5d:] ) ) - min( min_over_time( timestamp( openshift_network_operator_live_migration_condition{type="NetworkTypeMigrationInProgress"}
+              == 1 )[5d:] ) ) ) and on() openshift_network_operator_live_migration_condition{type="NetworkTypeMigrationInProgress"}
+              == 1
+            record: cluster:usage:network_live_migration_duration
+          - expr: openshift_network_operator_live_migration_blocked
+            record: cluster:usage:network_live_migration_blocked
+          - expr: openshift_network_operator_live_migration_condition
+            record: cluster:usage:network_live_migration_condition
+        - name: sre-network-live-migration-alerts
+          rules:
+          - alert: NetworkMigrationDelayedSRE
+            expr: (sum(cluster:usage:network_live_migration_duration) > (sum(cluster:nodes_roles)
+              * 1800))
+            for: 1m
+            labels:
+              severity: critical
+              namespace: openshift-network-operator
+            annotations:
+              message: Live migration from SDN to OVN is taking much longer than expected
+                to complete.
+          - alert: NetworkMigrationBlocked
+            expr: cluster:usage:network_live_migration_blocked == 1
+            for: 5m
+            labels:
+              severity: warning
+              namespace: openshift-network-operator
+            annotations:
+              message: Network operator cannot start the requested migration from
+                SDN to OVN due to {{ $labels.reason }}.
 - apiVersion: hive.openshift.io/v1
   kind: SelectorSyncSet
   metadata:
