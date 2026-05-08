@@ -29663,7 +29663,7 @@ objects:
         api.openshift.com/managed: 'true'
       matchExpressions:
       - key: disable-dirtyfrag-mitigation-daemonset
-        operator: In
+        operator: NotIn
         values:
         - 'true'
       - key: api.openshift.com/fedramp
