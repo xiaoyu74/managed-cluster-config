@@ -29666,6 +29666,11 @@ objects:
         operator: NotIn
         values:
         - 'true'
+      - key: ext-hypershift.openshift.io/cluster-type
+        operator: NotIn
+        values:
+        - management-cluster
+        - service-cluster
     resourceApplyMode: Sync
     resources:
     - apiVersion: v1
@@ -29740,6 +29745,108 @@ objects:
                     - rm -f /host/etc/modprobe.d/dirtyfrag.conf
               securityContext:
                 privileged: true
+              volumeMounts:
+              - name: host-root
+                mountPath: /host
+            volumes:
+            - name: host-root
+              hostPath:
+                path: /
+- apiVersion: hive.openshift.io/v1
+  kind: SelectorSyncSet
+  metadata:
+    labels:
+      managed.openshift.io/gitHash: ${IMAGE_TAG}
+      managed.openshift.io/gitRepoName: ${REPO_NAME}
+      managed.openshift.io/osd: 'true'
+    name: cve-2026-43284-disable-dirtyfrag-hcp
+  spec:
+    clusterDeploymentSelector:
+      matchLabels:
+        api.openshift.com/managed: 'true'
+      matchExpressions:
+      - key: disable-dirtyfrag-mitigation-daemonset
+        operator: NotIn
+        values:
+        - 'true'
+      - key: ext-hypershift.openshift.io/cluster-type
+        operator: In
+        values:
+        - management-cluster
+        - service-cluster
+    resourceApplyMode: Sync
+    resources:
+    - apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: redhat-cve-2026-43284-disable-dirtyfrag
+    - apiVersion: v1
+      kind: ServiceAccount
+      metadata:
+        name: disable-dirtyfrag
+        namespace: redhat-cve-2026-43284-disable-dirtyfrag
+    - apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRoleBinding
+      metadata:
+        name: disable-dirtyfrag-privileged
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: ClusterRole
+        name: system:openshift:scc:privileged
+      subjects:
+      - kind: ServiceAccount
+        name: disable-dirtyfrag
+        namespace: redhat-cve-2026-43284-disable-dirtyfrag
+    - apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: disable-dirtyfrag-ipsec-safe
+        namespace: redhat-cve-2026-43284-disable-dirtyfrag
+        labels:
+          app: disable-dirtyfrag-ipsec-safe
+      spec:
+        selector:
+          matchLabels:
+            app: disable-dirtyfrag-ipsec-safe
+        template:
+          metadata:
+            labels:
+              app: disable-dirtyfrag-ipsec-safe
+          spec:
+            serviceAccountName: disable-dirtyfrag
+            nodeSelector:
+              kubernetes.io/os: linux
+            tolerations:
+            - operator: Exists
+            terminationGracePeriodSeconds: 1
+            containers:
+            - name: detect-modules
+              image: registry.redhat.io/openshift4/ose-cli-rhel9@sha256:20e1fd3f0dd3fd28d5bb9c3067ceb8752a63ebd1a07c24873ba13e3e96c98413
+              command:
+              - /bin/sh
+              - -c
+              - "LOADED=false\nfor mod in esp4 esp6 rxrpc; do\n  if chroot /host grep\
+                \ -q \"^${mod} \" /proc/modules 2>/dev/null; then\n    echo \"DETECTED:\
+                \ ${mod} is loaded\"\n    LOADED=true\n  else\n    echo \"OK: ${mod}\
+                \ is not loaded\"\n  fi\ndone\necho \"=== result ===\"\nif [ \"${LOADED}\"\
+                \ = \"true\" ]; then\n  echo \"WARNING: one or more modules are loaded,\
+                \ skipping mitigation\"\nelse\n  if grep -qs \"esp4\" /host/etc/modprobe.d/dirtyfrag.conf\
+                \ 2>/dev/null; then\n    echo \"Modprobe blocklist already present,\
+                \ skipping\"\n  else\n    printf 'install esp4 /bin/false\\ninstall\
+                \ esp6 /bin/false\\ninstall rxrpc /bin/false\\n' > /host/etc/modprobe.d/dirtyfrag.conf\n\
+                \    echo \"Created /etc/modprobe.d/dirtyfrag.conf\"\n  fi\n  for\
+                \ mod in esp4 esp6 rxrpc; do\n    chroot /host modprobe -r \"${mod}\"\
+                \ 2>/dev/null || true\n  done\n  echo \"Node is protected\"\nfi\n\
+                sleep infinity\n"
+              securityContext:
+                privileged: true
+              lifecycle:
+                preStop:
+                  exec:
+                    command:
+                    - /bin/sh
+                    - -c
+                    - rm -f /host/etc/modprobe.d/dirtyfrag.conf
               volumeMounts:
               - name: host-root
                 mountPath: /host
