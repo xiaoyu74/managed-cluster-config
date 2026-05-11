@@ -29731,6 +29731,13 @@ objects:
                 \ mod in esp4 esp6 rxrpc; do\n    chroot /host modprobe -r \"${mod}\"\
                 \ 2>/dev/null || true\n  done\n  echo \"Node is protected\"\nfi\n\
                 sleep infinity\n"
+              lifecycle:
+                preStop:
+                  exec:
+                    command:
+                    - /bin/sh
+                    - -c
+                    - rm -f /host/etc/modprobe.d/dirtyfrag.conf
               securityContext:
                 privileged: true
               volumeMounts:
